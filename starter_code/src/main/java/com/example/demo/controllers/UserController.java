@@ -1,10 +1,12 @@
 package com.example.demo.controllers;
 
-import java.util.Optional;
-
+import com.example.demo.utils.Mapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,12 +23,21 @@ import com.example.demo.model.requests.CreateUserRequest;
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
+
+//	public static final Logger log = LoggerFactory.getLogger(UserController.class);
+
+	Logger logger = LogManager.getLogger(UserController.class);
 	
 	@Autowired
 	private UserRepository userRepository;
 	
 	@Autowired
 	private CartRepository cartRepository;
+
+	@Autowired
+	BCryptPasswordEncoder bCryptPasswordEncoder;
+
+	long userSignUpCount = 0;
 
 	@GetMapping("/id/{id}")
 	public ResponseEntity<User> findById(@PathVariable Long id) {
@@ -46,7 +57,20 @@ public class UserController {
 		Cart cart = new Cart();
 		cartRepository.save(cart);
 		user.setCart(cart);
+
+		if(createUserRequest.getPassword().length()<6||!createUserRequest.getPassword().equals(createUserRequest.getPassword())){
+			logger.error("Password error; User " + createUserRequest.getUsername() + " not created");
+			return ResponseEntity.badRequest().build();
+		}
+		user.setPassword(bCryptPasswordEncoder.encode(createUserRequest.getPassword()));
 		userRepository.save(user);
+
+		logger.info("User " + user.getUsername() + " has been created");
+		logger.info(Mapper.maptoJsonString(user));
+		userSignUpCount++;
+		logger.info("User sign up count is " + userSignUpCount);
+        logger.debug("This");
+
 		return ResponseEntity.ok(user);
 	}
 	
